@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #container {
+            width: 350px;
+            height: 480px;
+            border: 1px solid black;
+            background: url("./flappybird/bg_day.png");
+            /* background-size: 100%; */
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        #head {
+            position: absolute;
+            left: 80px;
+            top: 150px;
+        }
+
+        #head span {
+            width: 48px;
+            height: 48px;
+            display: inline-block;
+            background-image: url('./flappybird/bird1_1.png');
+            position: absolute;
+            /* top:20px; */
+            /* right:0px; */
+        }
+
+        #scoring {
+            position: absolute;
+            left: 50%;
+            top: 40px;
+            font-size: 50px;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        #menu {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 60%
+        }
+
+        #bird {
+            display: none;
+            position: absolute;
+            left: 50px;
+            top: 40px;
+            z-index: 10;
+            width: 34px;
+            height: 28px;
+            overflow: hidden;
+        }
+
+        #bird img {
+            transform: translateX(-6px) translateY(-10px);
+        }
+
+        #ductWrap {
+            position: absolute;
+            top: 0;
+        }
+
+        #ductWrap li {
+            position: absolute;
+            overflow: hidden;
+            top: 0;
+            left: -380px;
+            height: 380px;
+            width: 52px;
+            list-style-type: none;
+        }
+
+        #ductWrap .duct-up,
+        #ductWrap .duct-down {
+            position: absolute;
+        }
+
+        #gameover,
+        #success {
+            position: absolute;
+            left: 70px;
+            top: 200px;
+            display: none;
+            z-index: 999;
+        }
+        #success{
+            left: 160px;
+        }
+
+        #land {
+            position: absolute;
+            bottom: 0px;
+            width: 350px;
+            height: 100px;
+            background-image: url("./flappybird/land.png");
+        }
+
+        .die {
+            transition: 0.5s;
+            top: 352px !important;
+        }
+    </style>
+</head>
+
+<body>
+    <audio src="./crash.mp3" autoplay="autoplay" preload="auto"></audio>
+    <div id="container">
+        <!-- 头部 -->
+        <div id="head">
+            <img src="./flappybird/title.png" alt="">
+            <span></span>
+        </div>
+        <!-- 分数 -->
+        <div id="scoring">
+            0
+        </div>
+        <!-- 开始 -->
+        <div id="menu">
+            <img src="./flappybird/text_ready.png" alt="" id="start">
+        </div>
+        <!-- 飞翔的小鸟 -->
+        <div id="bird">
+            <img src="./flappybird/bird1_2.png" alt="">
+        </div>
+        <!-- 管道 -->
+        <ul id="ductWrap">
+            <!-- <div class = "duct-up"><img src="./flappybird/pipe_down.png"></div>
+            <div class = "duct-down"><img src="./flappybird/pipe_up.png"></div> -->
+            <!-- <div class = "duct-up" style="top:-'+upHeight+'px;"><img src="./flappybird/pipe_down.png"></div> -->
+            <!-- <div class = "duct-down" style="bottom:-'+downHeight+'px"><img src="./flappybird/pipe_up.png"></div> -->
+        </ul>
+        <!-- 游戏结束 -->
+        <div id="gameover">
+            <img src="./flappybird/text_game_over.png" alt="">
+        </div>
+        <!-- 通过成功 -->
+        <div id="success">
+            <img src="./flappybird/medals_1.png" alt="">
+        </div>
+        <!-- 草地 -->
+        <div id="land">
+            <!-- <img src="./flappybird/land.png" alt=""> -->
+        </div>
+    </div>
+</body>
+<!-- js部分 -->
+<script>
+    // 所有的游戏都是在点击start才开始
+    // 获取开始按钮
+    var startBtn = document.querySelector('#start');
+    var head = document.querySelector('#head');
+    var ductWrap = document.querySelector('#ductWrap')
+    var bird = document.querySelector("#bird")
+    var score = document.querySelector('#scoring')
+    var gameover = document.querySelector("#gameover")
+    var audio = document.querySelector("audio")
+    var success = document.querySelector("#success")
+    // 创建管道定时器
+    var creatDuctTimer = null;
+
+    // 是否删除管道移动定时器
+    var isDelTimer = false;
+
+    startBtn.onclick = function () {
+        // 页面中head/鸟/start图片消失
+        head.style.display = "none";
+        this.parentNode.style.display = "none";
+        // 小鸟出来
+        bird.style.display = "block";
+        // 设置小鸟的飞翔速度
+        bird.speed = 0;
+        bird.moveTimer = setInterval(function () {
+            // speed每隔0.3s加0.5
+            bird.speed += 0.5;
+            // 递增默认向下飞翔，值为负数代表向上飞翔
+            if (bird.speed <= 0) {
+                bird.children[0].src = './flappybird/bird1_0.png'
+            } else {
+                bird.children[0].src = './flappybird/bird1_2.png'
+            }
+            // 小鸟飞翔的区域及状态
+            if (bird.offsetTop <= 0) {
+                bird.style.top = "0px";
+            } else if (bird.offsetTop >= 352) {
+                bird.style.top = "352px";
+                clearInterval(bird.moveTimer);
+                clearInterval(creatDuctTimer);
+                isDelTimer = true;
+                audio.src = "./crash.mp3";
+                gameover.style.display = "block";
+            }
+            // 小鸟在画面中的高度
+            bird.style.top = bird.offsetTop + bird.speed + 'px'
+            // 小鸟碰撞检测
+            var ductRow = document.querySelectorAll(".duct-row");
+            // 管道不断循环，管道出现，碰撞检测
+            for (var i = 0; i < ductRow.length; i++) {
+                var isCrash = CrashFn(bird, ductRow[i]);
+                if (isCrash == true) {
+                    // 游戏结束
+                    clearInterval(bird.moveTimer);
+                    clearInterval(creatDuctTimer);
+                    isDelTimer = true;
+                    gameover.style.display = "block";
+                    bird.className = 'die';
+                    audio.src = "./crash.mp3";
+                }
+            }
+        }, 30)
+        // 小鸟向上移动
+        document.onmousedown = function (e) {
+            // 清除鼠标默认事件
+            var ev = e || window.event;
+            ev.preventDefault()
+            bird.speed = -5;
+            audio.src = "./flay.mp3"
+        }
+        // 随机函数 随机产生管道的高度
+        function randFn(min, max) {
+            return parseInt(Math.random() * (max - min + 1) + min);
+        }
+        // 创建管道，在点击开始按钮之前，通过计时器创建，每隔三秒创建一个 
+        creatDuctTimer = setInterval(function () {
+            var duct = document.createElement("li");
+            // 上半截管道相对于顶边的绝对定位位置
+            var upHeight = randFn(130, 260);
+            // 定义上下管道间距离80-150
+            var dis = randFn(80, 150);
+            // 下半截管道相对于底边的绝对定位位置(320(管道长度)-(380(li高度)-(320-upHeight))-dis)
+            var downHeight = 260 - upHeight + dis;
+            // 定义柱子出现的初始位置
+            duct.l = 380;
+            // 给管道添加bol，判断是否加分
+            duct.scoreBol = true;
+            duct.innerHTML = '<div class = "duct-up duct-row" style="top:-' + upHeight + 'px;"><img src="./flappybird/pipe_down.png"></div><div class = "duct-down duct-row" style="bottom:-' + downHeight + 'px"><img src="./flappybird/pipe_up.png"></div>'
+            // 实现管道的移动，定时器改变管道的left值
+            duct.moveTimer = setInterval(function () {
+                // 每隔30ms向左位移3px
+                duct.l -= 3;
+                duct.style.left = duct.l + 'px';
+
+                // 判断当管道移出到画面以外时，清除管道，停止管道的移动
+                // 小鸟通过柱子时，分数加1
+                if (duct.l <= -52) {
+                    ductWrap.removeChild(duct)
+                    clearInterval(duct.moveTimer)
+                } else if (duct.l + 52 <= 50) {
+                    if (duct.scoreBol == true) {
+                        score.innerHTML = parseInt(score.innerHTML) + 1;
+                        if (score.innerHTML == 2) {
+                            clearInterval(bird.moveTimer);
+                            clearInterval(creatDuctTimer);
+                            isDelTimer = true;
+                            success.style.display = "block"
+                        }
+                    }
+                    duct.scoreBol = false
+                }
+                // 小鸟死亡，清除定时器
+                if (isDelTimer == true) {
+                    clearInterval(duct.moveTimer)
+                }
+            }, 30)
+            ductWrap.appendChild(duct);
+        }, 3000)
+        // 碰撞检测
+        function CrashFn(obj1, obj2) {
+            // 小鸟左边和右边的距离
+            var obj1Left = obj1.offsetLeft;
+            var obj1Right = obj1Left + obj1.offsetWidth;
+            // 小鸟上边和下边的距离
+            var obj1Top = obj1.offsetTop;
+            var obj1Bottom = obj1Top + obj1.offsetHeight;
+            // 管道位置
+            var obj2Left = obj2.parentNode.offsetLeft;
+            var obj2Right = obj2Left + obj2.offsetWidth;
+            var obj2Top = obj2.offsetTop;
+            var obj2Bottom = obj2Top + obj2.offsetHeight;
+
+            if (obj1Right >= obj2Left && obj1Bottom >= obj2Top && obj1Left <= obj2Right && obj1Top <= obj2Bottom) {
+                // 碰撞发生,游戏结束
+                return true;
+            } else {
+                return false
+            }
+        }
+    }
+</script>
+
+</html>
